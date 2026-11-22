@@ -122,6 +122,25 @@ try
     Check(local.Source=="local"&&!local.Complete&&local.Depots.All(d=>!d.Available&&d.Error!.Contains("depotcache")),"missing local manifest marks the depot unavailable and the scope incomplete");
     Directory.CreateDirectory(localGame.Path);
     Check((await Verifier.Run(localGame with { AcfHash = "" }, local, null, default, VerifyMode.Quick)).Source=="local","report records the manifest source");
+    // Facts about files not in the manifest (observations only, no judgement).
+    Check(ExtraFacts.Kind("BepInEx/plugins/Mod.dll")=="program"&&ExtraFacts.Kind("Content/Paks/a.pak")=="package"&&ExtraFacts.Kind("doorstop_config.ini")=="config"&&ExtraFacts.Kind("Saved/Logs/a.log")=="log"&&ExtraFacts.Kind("readme.md")=="other","file type by extension");
+    var factRoot = Path.Combine(root,"facts-game"); Directory.CreateDirectory(Path.Combine(factRoot,"Bin")); Directory.CreateDirectory(Path.Combine(factRoot,"BepInEx","plugins"));
+    await File.WriteAllTextAsync(Path.Combine(factRoot,"Bin","Game.exe"),"exe");
+    await File.WriteAllTextAsync(Path.Combine(factRoot,"Bin","winhttp.dll"),"mod loader");
+    await File.WriteAllTextAsync(Path.Combine(factRoot,"BepInEx","plugins","Old.dll"),"old mod");
+    await File.WriteAllTextAsync(Path.Combine(factRoot,"BepInEx","plugins","New.dll"),"new mod");
+    var updated = new DateTimeOffset(2026,11,1,0,0,0,TimeSpan.Zero);
+    File.SetLastWriteTimeUtc(Path.Combine(factRoot,"BepInEx","plugins","Old.dll"),updated.UtcDateTime.AddDays(-30));
+    File.SetLastWriteTimeUtc(Path.Combine(factRoot,"BepInEx","plugins","New.dll"),updated.UtcDateTime.AddDays(1));
+    File.SetLastWriteTimeUtc(Path.Combine(factRoot,"Bin","winhttp.dll"),updated.UtcDateTime.AddDays(1));
+    var factGame = game with { Path = factRoot, LastUpdated = updated.ToUnixTimeSeconds() };
+    var facts = await Verifier.Run(factGame,new([Official("Bin/Game.exe","exe")],[],true,[]),null,default,VerifyMode.Quick);
+    FileResult F(string p) => facts.Files.Single(f=>f.Path==p);
+    Check(F("BepInEx/plugins/Old.dll").Facts!.SequenceEqual([ExtraFacts.OlderThanUpdate])&&F("BepInEx/plugins/New.dll").Facts!.Count==0,"older-than-update fact from last-write time vs Steam lastupdated");
+    Check(F("Bin/winhttp.dll").Facts!.SequenceEqual([ExtraFacts.BesideExecutable])&&F("Bin/winhttp.dll").Kind=="program","beside-executable fact for files next to an official .exe");
+    Check(F("Bin/winhttp.dll").Modified!.Value.UtcDateTime==updated.UtcDateTime.AddDays(1)&&facts.LastUpdated==updated.ToUnixTimeSeconds(),"modified time and Steam update time reported");
+    Check(F("Bin/Game.exe").Facts==null&&F("Bin/Game.exe").Kind==null,"official files carry no extra-file facts");
+    Check((await Verifier.Run(factGame with { LastUpdated = 0 },new([Official("Bin/Game.exe","exe")],[],true,[]),null,default,VerifyMode.Quick)).Files.Single(f=>f.Path=="BepInEx/plugins/Old.dll").Facts!.Count==0,"no update time recorded means no older-than-update fact");
     Directory.CreateDirectory(found[0].Path);
     await File.AppendAllTextAsync(acf,"\n");
     try { await Verifier.Run(found[0],new([],[],true,[]),null,default); throw new Exception("ACF mutation ignored"); } catch(IOException) { passed++; }

@@ -89,6 +89,7 @@ describe('deleting extra files',()=>{
   render(<App/>);emit('state',{...idle,report:complete});
   expect(screen.queryByRole('checkbox',{name:'选择 Game/official.bin'})).toBeNull();
   click('全选额外文件');
+  fireEvent.click(screen.getByRole('button',{name:/Saved\//}));
   expect((screen.getByRole('checkbox',{name:'选择 Saved/a.log'}) as HTMLInputElement).checked).toBe(true);
   expect((screen.getByRole('checkbox',{name:'选择 Saved/b.log'}) as HTMLInputElement).checked).toBe(true);
   fireEvent.click(screen.getByRole('button',{name:/删除所选 2 个/}));
@@ -98,6 +99,7 @@ describe('deleting extra files',()=>{
  });
  it('allows picking a single extra file',()=>{
   render(<App/>);emit('state',{...idle,report:complete});
+  fireEvent.click(screen.getByRole('button',{name:/Saved\//}));
   fireEvent.click(screen.getByRole('checkbox',{name:'选择 Saved/b.log'}));
   fireEvent.click(screen.getByRole('button',{name:/删除所选 1 个/}));
   expect(postMessage).toHaveBeenLastCalledWith({type:'deleteExtra',paths:['Saved/b.log']});
@@ -205,5 +207,36 @@ describe('login and manifest source',()=>{
   render(<App/>);emit('state',{...idle,connected:true,account:'user1'});
   expect(screen.getByText('已登录 user1')).toBeTruthy();
   click('退出登录');expect(postMessage).toHaveBeenLastCalledWith({type:'logout'});
+ });
+});
+
+describe('extra files view',()=>{
+ const files=[
+  {path:'Game/Game.exe',status:'match',localSize:4,officialSize:4,source:'base'},
+  {path:'Game/winhttp.dll',status:'extra',localSize:10,officialSize:null,source:'未匹配',kind:'program',facts:['besideExecutable']},
+  {path:'BepInEx/plugins/Old.dll',status:'extra',localSize:20,officialSize:null,source:'未匹配',kind:'program',facts:['olderThanUpdate']},
+  {path:'BepInEx/config/a.cfg',status:'extra',localSize:30,officialSize:null,source:'未匹配',kind:'config',facts:[]}
+ ];
+ const report={appId:42,started:'2026-11-22T10:00:00Z',scopeComplete:true,depots:[],warnings:[],files};
+ it('opens on extra files and groups a folder with no official files',()=>{
+  render(<App/>);emit('state',{...idle,report});
+  expect(document.querySelector('.tabs .active')?.textContent).toMatch(/^额外文件/);
+  expect(screen.getByText('BepInEx/')).toBeTruthy();
+  expect(screen.getByText(/整个文件夹不在 Steam 清单中 · 2 个文件/)).toBeTruthy();
+  expect(screen.queryByText('Old.dll')).toBeNull();
+  expect(screen.getByText('winhttp.dll')).toBeTruthy();
+ });
+ it('folder checkbox selects every file in the folder',()=>{
+  render(<App/>);emit('state',{...idle,report});
+  fireEvent.click(screen.getByRole('checkbox',{name:'选择文件夹 BepInEx/'}));
+  fireEvent.click(screen.getByRole('button',{name:/删除所选 2 个/}));
+  expect(postMessage).toHaveBeenLastCalledWith({type:'deleteExtra',paths:['BepInEx/plugins/Old.dll','BepInEx/config/a.cfg']});
+ });
+ it('filters by observable facts without any risk verdict',()=>{
+  render(<App/>);emit('state',{...idle,report});
+  fireEvent.click(screen.getByRole('button',{name:/修改时间早于最近一次安装或更新/}));
+  expect(screen.queryByText('winhttp.dll')).toBeNull();
+  expect(screen.getByText('Old.dll')).toBeTruthy();
+  expect(document.body.textContent).not.toMatch(/高风险|建议删除|危险/);
  });
 });

@@ -256,7 +256,8 @@ public sealed class MainWindow : Form
             return;
         }
         var text = $"将 {plan.Files.Count:N0} 个额外文件（{FormatSize(plan.TotalSize)}）从\n{reportGame.Path}\n移到回收站。\n\n"
-            + "“额外”只表示不在官方清单中。其中可能有游戏配置、存档、缓存、启动器或反作弊组件，删除后游戏可能需要重新生成文件或通过 Steam 修复。\n\n"
+            + "“额外”只表示这些文件不在 Steam 官方清单中。本程序不判断文件是否安全、是否影响游戏或是否符合游戏规则，是否删除由你决定。"
+            + "其中可能包含游戏自行生成的配置、存档或缓存，以及游戏启动器下载的组件。\n\n"
             + (plan.Skipped.Count > 0 ? $"另有 {plan.Skipped.Count} 个文件不符合删除条件，将保留。\n\n" : "")
             + "文件可从回收站恢复；如果某些文件过大无法放入回收站，Windows 会先询问是否永久删除。\n\n是否继续？";
         if (MessageBox.Show(this, text, "删除额外文件", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)

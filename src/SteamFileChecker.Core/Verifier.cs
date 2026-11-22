@@ -25,6 +25,7 @@ public static class Verifier
         var results = new List<FileResult>();
         var warnings = new List<string>(snapshot.Warnings);
         var expected = snapshot.Files.GroupBy(f => Normalize(f.Path), StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+        var executableFolders = ExtraFacts.ExecutableFolders(snapshot.Files.Select(f => f with { Path = Normalize(f.Path) }));
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var blocked = new List<string>();
         var count = 0;
@@ -48,7 +49,8 @@ public static class Verifier
                     var info = new FileInfo(full);
                     if (!expected.TryGetValue(relative, out var candidates))
                     {
-                        results.Add(new(relative, snapshot.Complete ? "extra" : "uncertain", info.Length, null, null, null, "未匹配", snapshot.Complete ? "可能是配置、MOD 或运行时生成文件，请人工确认" : "官方内容范围不完整"));
+                        results.Add(new(relative, snapshot.Complete ? "extra" : "uncertain", info.Length, null, null, null, "未匹配", snapshot.Complete ? "不在 Steam 官方清单中" : "官方内容范围不完整",
+                            ExtraFacts.Kind(relative), ExtraFacts.For(relative, info.LastWriteTimeUtc, game.LastUpdated, executableFolders), new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)));
                     }
                     else
                     {
@@ -86,6 +88,6 @@ public static class Verifier
         }
         if (!string.IsNullOrEmpty(game.AcfHash) && (!File.Exists(game.AcfPath) || Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(game.AcfPath, ct))) != game.AcfHash))
             throw new IOException("检测期间 Steam 安装记录变化，结果已丢弃，请重新检测。");
-        return new(game.AppId, game.Name, game.BuildId, game.Branch, started, snapshot.Complete, snapshot.Depots, warnings, results, mode == VerifyMode.Quick ? "quick" : "full", snapshot.Source);
+        return new(game.AppId, game.Name, game.BuildId, game.Branch, started, snapshot.Complete, snapshot.Depots, warnings, results, mode == VerifyMode.Quick ? "quick" : "full", snapshot.Source, game.LastUpdated);
     }
 }

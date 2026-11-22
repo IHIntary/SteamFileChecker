@@ -50,12 +50,12 @@ public static class Library
             var dlc = d["dlcappid"].AsUnsignedInteger();
             return new InstalledDepot(uint.Parse(d.Name!), d["manifest"].Value ?? "0", dlc > 0 ? dlc : null);
         }).ToList();
-        // "SharedDepots" { "<depot>" "<owning app>" }: content from another app installed into this game's folder (e.g. _CommonRedist).
+        // "SharedDepots" { "<depot>" "<owning app>" }: content owned by another app (e.g. 228980 redistributables), installed in that app's folder.
         var shared = kv["SharedDepots"].Children
             .Where(d => uint.TryParse(d.Name, out _) && d.AsUnsignedInteger() > 0)
             .Select(d => new SharedDepot(uint.Parse(d.Name!), d.AsUnsignedInteger()))
             .ToList();
         var flags = kv["StateFlags"].AsUnsignedInteger();
-        return new Game(kv["appid"].AsUnsignedInteger(), kv["name"].Value ?? install, path, kv["buildid"].Value ?? "未知", kv["UserConfig"]["BetaKey"].Value ?? "public", acf, Convert.ToHexString(SHA256.HashData(bytes)), depots, flags != 4, shared);
+        return new Game(kv["appid"].AsUnsignedInteger(), kv["name"].Value ?? install, path, kv["buildid"].Value ?? "未知", kv["UserConfig"]["BetaKey"].Value ?? "public", acf, Convert.ToHexString(SHA256.HashData(bytes)), depots, flags != 4, shared, kv["lastupdated"].AsLong());
     }
 }
