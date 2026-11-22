@@ -11,7 +11,8 @@ type Progress = {stage:string;done:number;total:number;current:string};
 type Bridge = {postMessage:(message:unknown)=>void;addEventListener:(type:string,fn:(e:{data:{type:string;payload:any}})=>void)=>void;removeEventListener:(type:string,fn:unknown)=>void};
 const bridge = (window as unknown as {chrome?:{webview?:Bridge}}).chrome?.webview;
 const labels:Record<string,string> = {all:'全部文件',match:'一致',missing:'缺失',changed:'内容不同',extra:'额外文件',uncertain:'待确认',unreadable:'无法读取'};
-const APP_VERSION='0.1.0';
+// Set at build time from the release tag (build.ps1 -Version); local builds without a version show "开发版本".
+const APP_VERSION=(import.meta as {env?:Record<string,string|undefined>}).env?.VITE_APP_VERSION||'开发版本';
 const APP_AUTHOR='Intary';
 function size(n:number|null|undefined){if(n==null)return '—';if(n===0)return '0 B';const i=Math.min(3,Math.floor(Math.log(n)/Math.log(1024)));return `${(n/1024**i).toFixed(i?2:0)} ${['B','KB','MB','GB'][i]}`;}
 export function App(){

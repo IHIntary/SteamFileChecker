@@ -1,0 +1,72 @@
+# Builds and publishes a GitHub Release when a version tag is pushed, e.g.:
+#   git tag v1.0.0
+#   git push origin v1.0.0
+# The tag (without the leading "v") becomes the app version shown in About and in the .exe file properties.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the release and upload its files
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}' -replace '^v', ''
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      # Runs the UI and core tests, builds the UI, then publishes the framework-dependent build.
+      - name: Test and build
+        shell: pwsh
+        run: ./build.ps1 -Version '${{ steps.version.outputs.value }}' -OutputDirectory artifacts/app
+
+      # Same build with the .NET runtime included (no runtime install needed); ui/dist is already built.
+      - name: Build standalone
+        shell: pwsh
+        run: |
+          dotnet publish src/SteamFileChecker.Desktop -c Release -r win-x64 --self-contained true `
+            -p:Version='${{ steps.version.outputs.value }}' -o artifacts/app-standalone
+          if ($LASTEXITCODE -ne 0) { throw 'Standalone build failed' }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $name = 'SteamFileChecker-${{ github.ref_name }}-win-x64'
+          Compress-Archive -Path artifacts/app/* -DestinationPath "$name.zip"
+          Compress-Archive -Path artifacts/app-standalone/* -DestinationPath "$name-standalone.zip"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            SteamFileChecker-${{ github.ref_name }}-win-x64.zip
+            SteamFileChecker-${{ github.ref_name }}-win-x64-standalone.zip
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            ## 下载
+
+            | 文件 | 说明 |
+            | --- | --- |
+            | `SteamFileChecker-${{ github.ref_name }}-win-x64-standalone.zip` | 推荐。已包含 .NET 运行环境，解压即用 |
+            | `SteamFileChecker-${{ github.ref_name }}-win-x64.zip` | 体积小，需要先安装 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
+
+            解压后运行 `SteamFileChecker.Desktop.exe`。需要 Windows 10/11 x64 和 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)（Windows 11 已自带）。

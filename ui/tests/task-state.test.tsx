@@ -154,7 +154,7 @@ describe('status copy',()=>{
  it('about panel lists facts without settings or roadmap text',()=>{
   render(<App/>);emit('state',idle);click('关于');
   const dialog=screen.getByRole('dialog',{name:'关于'});
-  expect(dialog.textContent).toContain('0.1.0');
+  expect(dialog.textContent).toContain('开发版本');
   expect(dialog.textContent).toContain('由 Intary 制作');
   expect(dialog.textContent).toContain('版权所有 © 2026 Intary');
   expect(dialog.textContent).not.toMatch(/尚未提供|预览版/);
