@@ -1,0 +1,24 @@
+# Local toolchain (.NET SDK, reference sources)
+.tools/
+
+# Build output
+**/bin/
+**/obj/
+artifacts/
+ui/dist/
+*.tsbuildinfo
+
+# Dependencies
+ui/node_modules/
+
+# Editor and tool state
+.vs/
+.vscode/
+.idea/
+.claude/
+*.user
+*.suo
+
+# Test and runtime leftovers
+TestResults/
+*.log

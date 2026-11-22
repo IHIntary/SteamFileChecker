@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SteamFileChecker.Core/SteamFileChecker.Core.csproj" />
+    <Project Path="src/SteamFileChecker.Desktop/SteamFileChecker.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SteamFileChecker.Tests/SteamFileChecker.Tests.csproj" />
+  </Folder>
+</Solution>
